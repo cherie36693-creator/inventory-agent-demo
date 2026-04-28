@@ -270,7 +270,12 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
     .ib-edit-del { flex: 1; height: 32px; border: 1px solid #FFCDD2; background: none; color: #E53935; border-radius: 8px; font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit; }
     .ib-edit-del:active { background: #FFF5F5; }
     /* Fixed Bottom */
-    .ib-bottom { flex-shrink: 0; background: #fff; border-top: 1px solid #F0F0F0; padding: 10px 16px 28px; z-index: 10; }
+    .ib-bottom { position: sticky; bottom: 0; background: #fff; border-top: 1px solid #F0F0F0; padding: 10px 16px 28px; z-index: 10; flex-shrink: 0; }
+    #page-outbound-confirm, #page-inbound { display: none; flex-direction: column; overflow: hidden; }
+    #page-outbound-confirm.active, #page-inbound.active { display: flex; }
+    #page-outbound-confirm > .nav-header, #page-outbound-confirm > .ib-ai-bar,
+    #page-inbound > .nav-header, #page-inbound > .ib-ai-bar { flex-shrink: 0; }
+    #page-outbound-confirm .ib-split, #page-inbound .ib-split { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
     .ib-bottom-summary { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
     .ib-bottom-count { font-size: 13px; color: #666; }
     .ib-bottom-total { font-size: 18px; font-weight: 700; color: #34A853; }
@@ -362,7 +367,7 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
 .ob-qty-input { width: 48px; height: 28px; border: none; background: #fff; text-align: center; font-size: 13px; font-weight: 500; font-family: inherit; }
 .ob-qty-max { font-size: 11px; color: #BBB; }
 /* 底部确认栏 */
-.ob-bottom { flex-shrink: 0; background: #fff; border-top: 0.5px solid #E8E8E8; padding: 10px 16px 28px; display: flex; align-items: center; gap: 12px; z-index: 10; }
+.ob-bottom { position: sticky; bottom: 0; background: #fff; border-top: 0.5px solid #E8E8E8; padding: 10px 16px 28px; display: flex; align-items: center; gap: 12px; z-index: 10; }
 .ob-bottom-info { flex: 1; font-size: 13px; color: #666; display: flex; align-items: center; gap: 8px; }
 .ob-bottom-btn { padding: 10px 24px; border: none; border-radius: 10px; background: #34A853; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
 .ob-bottom-btn:active { opacity: 0.85; }
@@ -410,27 +415,31 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
 .outbound-summary-text strong { color: #222; font-size: 16px; }
 
 /* 盘点弹窗 */
-.ck-modal-mask { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.55); display: flex; align-items: flex-end; justify-content: center; }
-.ck-modal { width: 100%; max-width: 400px; max-height: 88vh; background: #1e1e30; border-radius: 20px 20px 0 0; overflow: hidden; display: flex; flex-direction: column; animation: ckSlideUp 0.3s ease; }
+.ck-modal-mask { position: absolute; inset: 0; z-index: 1000; background: rgba(0,0,0,0.35); display: flex; align-items: flex-end; justify-content: center; }
+.ck-modal { width: 100%; max-height: 60%; background: #fff; border-radius: 20px 20px 0 0; overflow: hidden; display: flex; flex-direction: column; animation: ckSlideUp 0.3s ease; }
 @keyframes ckSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-.ck-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px; flex-shrink: 0; }
-.ck-modal-title { font-size: 16px; font-weight: 600; color: #fff; }
-.ck-modal-close { width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: inherit; }
-.ck-modal-body { padding: 0 20px 24px; overflow-y: auto; flex: 1; }
-.ck-modal-desc { font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 16px; }
+.ck-modal::before { content: ''; display: block; width: 36px; height: 4px; background: #DDD; border-radius: 2px; margin: 10px auto 0; flex-shrink: 0; }
+.ck-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 20px 4px; flex-shrink: 0; }
+.ck-modal-title { font-size: 17px; font-weight: 600; color: #222; }
+.ck-modal-close { width: 28px; height: 28px; border-radius: 50%; border: none; background: #F0F0F0; color: #999; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: inherit; }
+.ck-modal-body { padding: 0 20px 20px; overflow-y: auto; flex: 1; }
+.ck-modal-desc { font-size: 13px; color: #999; margin-bottom: 12px; }
 
 /* 盘点选择按钮 */
-.ck-btn-row { display: flex; gap: 10px; }
-.ck-main-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 20px 10px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); cursor: pointer; font-family: inherit; transition: all 0.15s; }
-.ck-main-btn:active { transform: scale(0.97); background: rgba(255,255,255,0.1); }
-.ck-main-btn-icon { font-size: 32px; }
-.ck-main-btn-title { font-size: 14px; font-weight: 600; color: #fff; margin-top: 4px; }
-.ck-main-btn-desc { font-size: 11px; color: rgba(255,255,255,0.3); text-align: center; line-height: 1.4; }
+.ck-btn-row { display: flex; flex-direction: column; gap: 8px; }
+.ck-main-btn { flex: 1; display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 12px; border: 1px solid #EEEEEE; background: #F9F9F9; cursor: pointer; font-family: inherit; transition: all 0.15s; text-align: left; }
+.ck-main-btn:active { transform: scale(0.97); background: #F0F0F0; }
+.ck-main-btn-icon { font-size: 24px; flex-shrink: 0; }
+.ck-main-btn-title { font-size: 14px; font-weight: 600; color: #222; }
+.ck-main-btn-desc { font-size: 11px; color: #999; line-height: 1.3; }
 
 /* 盘点摄像头 */
-.ck-camera-view { border-radius: 14px; position: relative; aspect-ratio: 4/3; background: #2a2a4a; overflow: hidden; }
+.ck-camera-view { border-radius: 14px; position: relative; aspect-ratio: 4/3; background: #F5F5F5; overflow: hidden; }
 .ck-camera-view video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ck-camera-view img { width: 100%; height: 100%; object-fit: cover; display: none; }
+.ck-camera-view .ai-overlay { background: rgba(245,245,245,0.9); }
+.ck-camera-view .ai-overlay .loading-spinner { border-color: #E0E0E0; border-top-color: #34A853; }
+.ck-camera-view .ai-overlay .loading-text { color: #666; }
 .ck-capture-btn { background: #34A853 !important; }
 
 /* 盘点识别结果编辑 */
@@ -481,7 +490,7 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
 .ck-edit-page-title { font-size: 16px; font-weight: 600; color: #222; }
 .ck-edit-page-title span { font-size: 12px; font-weight: 400; color: #999; }
 .ck-edit-page-hint { font-size: 12px; color: #999; margin-top: 2px; }
-.ck-edit-page-bottom { background: #fff; border-top: 0.5px solid #e0e0e0; padding: 10px 16px 34px; display: flex; gap: 10px; flex-shrink: 0; }
+.ck-edit-page-bottom { position: sticky; bottom: 0; background: #fff; border-top: 0.5px solid #e0e0e0; padding: 10px 16px 34px; display: flex; gap: 10px; }
 /* 浅色表格样式 */
 #page-check-edit .ck-edit-table { background: #fff; border-radius: 12px; overflow: hidden; }
 #page-check-edit .ck-edit-table thead th { color: #999; padding: 12px 8px 10px; border-bottom: 1px solid #f0f0f0; }
@@ -564,7 +573,7 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
 .ck-ok-check { color: #34A853; font-size: 14px; }
 
 /* 盘点结果 - 底部 */
-.ck-bottom { background: #fff; border-top: 0.5px solid #e0e0e0; padding: 10px 16px 34px; flex-shrink: 0; }
+.ck-bottom { position: sticky; bottom: 0; background: #fff; border-top: 0.5px solid #e0e0e0; padding: 10px 16px 34px; }
 .ck-bottom-row { display: flex; gap: 10px; }
 .ck-btn { flex: 1; height: 44px; border: none; border-radius: 12px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; }
 .ck-btn-gray { background: #f0f0f0; color: #666; }
@@ -746,6 +755,21 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
       font-weight: 500;
     }
 
+    /* Onboarding tooltips */
+    .onboard-mask { position: absolute; inset: 0; z-index: 999; background: rgba(0,0,0,0.45); animation: onboardFadeIn 0.35s ease both; }
+    .onboard-step { position: absolute; z-index: 202; animation: onboardPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
+    .onboard-step[data-step="2"] { animation-delay: 0.1s; }
+    .onboard-bubble { background: #fff; color: #222; font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: 20px; white-space: nowrap; position: relative; letter-spacing: 0.3px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+    .onboard-bubble::after { content: ''; position: absolute; left: 30%; transform: translateX(-50%); }
+    .onboard-step.arrow-down .onboard-bubble::after { top: 100%; border: 8px solid transparent; border-top-color: #fff; }
+    .onboard-step.arrow-up .onboard-bubble::after { bottom: 100%; border: 8px solid transparent; border-bottom-color: #fff; }
+    .onboard-ring { position: absolute; z-index: 201; border-radius: 16px; border: 2px solid rgba(255,255,255,0.85); animation: onboardPulse 1.8s ease-in-out infinite; pointer-events: none; }
+    .onboard-ring.round { border-radius: 50%; }
+    .onboard-mask { cursor: pointer; }
+    @keyframes onboardFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes onboardPop { from { opacity: 0; transform: scale(0.8) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    @keyframes onboardPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.4); } 50% { box-shadow: 0 0 0 8px rgba(255,255,255,0); } }
+
     .home-scan-btn {
       position: absolute;
       bottom: 20px;
@@ -796,7 +820,8 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
     /* 最近动态 */
     .timeline-compact { background: #fff; border-radius: 12px; margin: 12px 16px 0; padding: 14px 16px; }
     .timeline-section-title { font-size: 13px; font-weight: 600; color: #999; margin-bottom: 8px; padding: 0; }
-    .timeline-entry { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 0.5px solid #F0F0F0; }
+    .timeline-entry { display: flex; align-items: center; gap: 8px; padding: 9px 4px; margin: 0 -4px; border-bottom: 0.5px solid #F0F0F0; border-radius: 6px; transition: background 0.15s; }
+    .timeline-entry:active { background: #F5F5F5; }
     .timeline-entry:last-child { border-bottom: none; }
     .timeline-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
     .timeline-dot.in { background: #34A853; }
@@ -1128,13 +1153,27 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
       </div>
     </div>
 
+    <!-- Onboarding overlay (phone-frame 层级，覆盖 tab-bar) -->
+    <div class="onboard-mask" id="onboardMask" style="display:none;" onclick="dismissOnboard()">
+      <!-- 气泡1: 指向库存助手横幅 -->
+      <div class="onboard-step arrow-down" style="top:33%;left:50%;transform:translateX(-50%);">
+        <div class="onboard-bubble">点击进入库存助手</div>
+      </div>
+      <div class="onboard-ring" style="top:39.5%;left:10px;right:10px;height:12%;"></div>
+      <!-- 气泡2: 指向底部扫描按钮 -->
+      <div class="onboard-step arrow-down" data-step="2" style="bottom:100px;left:50%;transform:translateX(-50%);">
+        <div class="onboard-bubble">扫描后AI识别出/入库单据</div>
+      </div>
+      <div class="onboard-ring round" style="bottom:33px;left:50%;transform:translateX(-50%);width:62px;height:62px;"></div>
+    </div>
+
 
   <!-- ========== PAGE 0: WORKSPACE ========== -->
   <div class="page hidden" id="page-workspace">
     <div class="ws-nav">
       <span class="back-btn" onclick="goBack()">←</span>
       <span class="ws-nav-title">库存助手</span>
-      <span style="width:32px;text-align:center;cursor:pointer;font-size:18px;" onclick="navigateTo('page-settings')">⚙</span>
+      <span style="width:32px;"></span>
     </div>
 
     <div style="padding-bottom: 20px;">
@@ -1189,28 +1228,8 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
         </div>
       </div>
 
-      <!-- 最近动态 -->
-      <div class="timeline-compact">
-        <div class="timeline-section-title">最近动态</div>
-        <div class="timeline-entry">
-          <span class="timeline-dot in"></span>
-          <span class="timeline-label in">入库</span>
-          <span class="timeline-text">PE给水管 DN315 +20根</span>
-          <span class="timeline-time">今天 14:30</span>
-        </div>
-        <div class="timeline-entry">
-          <span class="timeline-dot out"></span>
-          <span class="timeline-label out">出库</span>
-          <span class="timeline-text">镀锌钢管 DN50 -30根</span>
-          <span class="timeline-time">今天 11:20</span>
-        </div>
-        <div class="timeline-entry">
-          <span class="timeline-dot in"></span>
-          <span class="timeline-label in">入库</span>
-          <span class="timeline-text">水泥 P.O42.5 +10吨</span>
-          <span class="timeline-time">昨天 16:45</span>
-        </div>
-      </div>
+      <!-- 最近动态（动态渲染） -->
+      <div class="timeline-compact" id="wsTimeline"></div>
     </div>
 
   </div>
@@ -1444,17 +1463,15 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
       </div>
       <!-- 初始选择 -->
       <div class="ck-modal-body" id="ckModalChoose">
-        <div class="ck-modal-desc">选择盘点方式</div>
+        <!-- desc removed for compact layout -->
         <div class="ck-btn-row">
           <button class="ck-main-btn" onclick="ckCheckMode='real'; startCheckCamera();">
             <span class="ck-main-btn-icon">📦</span>
-            <span class="ck-main-btn-title">拍实物</span>
-            <span class="ck-main-btn-desc">对准货架，AI识别物品数量</span>
+            <div><div class="ck-main-btn-title">拍实物</div><div class="ck-main-btn-desc">对准货架，AI识别物品数量</div></div>
           </button>
           <button class="ck-main-btn" onclick="ckCheckMode='doc'; document.getElementById('ckFileInput').click();">
             <span class="ck-main-btn-icon">📋</span>
-            <span class="ck-main-btn-title">拍盘点单</span>
-            <span class="ck-main-btn-desc">拍单据照片，AI提取清单</span>
+            <div><div class="ck-main-btn-title">拍盘点单</div><div class="ck-main-btn-desc">拍单据照片，AI提取清单</div></div>
           </button>
         </div>
         <input type="file" accept="image/*" capture="environment" id="ckFileInput" style="display:none;" onchange="handleCheckFile(this)" />
@@ -1479,10 +1496,10 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
           </div>
         </div>
         <div class="ck-btn-row" id="ckCaptureBtnRow" style="margin-top:12px;">
-          <button class="scan-action-btn ck-capture-btn" onclick="captureCheckPhoto()">拍照识别</button>
-          <button class="scan-action-btn" style="flex:0.3;background:rgba(255,255,255,0.08);" onclick="stopCheckCamera()">取消</button>
+          <button class="ck-capture-btn" style="flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit;" onclick="captureCheckPhoto()">拍照识别</button>
+          <button style="flex:0.3;padding:12px;border:none;border-radius:10px;background:#F0F0F0;font-size:14px;color:#666;cursor:pointer;font-family:inherit;" onclick="stopCheckCamera()">取消</button>
         </div>
-        <div id="ckStatusText" style="font-size:13px; color:rgba(255,255,255,0.4); padding:8px 0; text-align:center; display:none;"></div>
+        <div id="ckStatusText" style="font-size:13px; color:#999; padding:8px 0; text-align:center; display:none;"></div>
       </div>
     </div>
   </div>
@@ -1567,6 +1584,17 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
     </div>
     <div class="page-content" style="padding-bottom:20px;">
       <!-- rendered by showObDetail() -->
+    </div>
+  </div>
+
+  <!-- ========== PAGE: INBOUND DETAIL ========== -->
+  <div class="page hidden" id="page-inbound-detail">
+    <div class="nav-header">
+      <button class="back-btn" onclick="goBack()">←</button>
+      <span class="nav-title">入库单据</span>
+    </div>
+    <div class="page-content" style="padding-bottom:20px;">
+      <!-- rendered by showInboundDetail() -->
     </div>
   </div>
 
@@ -2426,6 +2454,20 @@ function aiRenderReceipt(aiResult) {
 var currentAiResult = null;
 var currentScanImage = null;
 
+// ========== ONBOARDING ==========
+function initOnboard() {
+  localStorage.removeItem('onboard_seen'); // 预览模式：每次都显示引导
+  var mask = document.getElementById('onboardMask');
+  if (!mask) return;
+  mask.style.display = '';
+}
+window.addEventListener('load', function() { setTimeout(initOnboard, 300); });
+function dismissOnboard() {
+  var mask = document.getElementById('onboardMask');
+  if (mask) { mask.style.transition = 'opacity 0.3s'; mask.style.opacity = '0'; setTimeout(function(){ mask.remove(); }, 300); }
+  localStorage.setItem('onboard_seen', '1');
+}
+
 // ========== NAVIGATION ==========
 const pageHistory = ['page-home'];
 let currentPage = 'page-home';
@@ -2464,7 +2506,8 @@ function navigateTo(pageId) {
   currentPage = pageId;
   next.scrollTop = 0;
 
-  // Trigger page-specific animations
+  // Trigger page-specific actions
+  if (pageId === 'page-workspace') renderWsTimeline();
   if (pageId === 'page-scan') startScanAnimation();
   if (pageId === 'page-smart-scan') resetSmartScan();
   // page-check-camera removed — now uses modal
@@ -3047,8 +3090,8 @@ function doConfirmInbound() {
   });
   saveData();
   updateHomeLedger();
+  lgSetView('detail');
   navigateTo('page-ledger');
-  renderLedger();
   showToast('入库成功，' + count + ' 项商品已入库');
 }
 
@@ -3058,46 +3101,49 @@ var lgFilter = '全部';
 
 var DEFAULT_LG_DATA = [
   { name:'PE给水管', spec:'DN315×12m', stock:45, unit:'根', avgPrice:310, industry:'管材', entries:[
-    { docNo:'SH-20260426-012', supplier:'华南管业', date:'04-26', qty:20, price:298 },
-    { docNo:'SH-20260410-005', supplier:'华南管业', date:'04-10', qty:25, price:320 }
+    { docNo:'SH-20260426-012', supplier:'华南管业', date:'04-26 14:32', qty:20, price:298 },
+    { docNo:'SH-20260410-005', supplier:'华南管业', date:'04-10 09:15', qty:25, price:320 }
   ]},
   { name:'PE给水管', spec:'DN200×12m', stock:120, unit:'根', avgPrice:175, industry:'管材', entries:[
-    { docNo:'SH-20260422-008', supplier:'华南管业', date:'04-22', qty:50, price:168 },
-    { docNo:'SH-20260408-002', supplier:'李氏钢材', date:'04-08', qty:70, price:180 }
+    { docNo:'SH-20260422-008', supplier:'华南管业', date:'04-22 16:08', qty:50, price:168 },
+    { docNo:'SH-20260408-002', supplier:'李氏钢材', date:'04-08 10:45', qty:70, price:180 }
   ]},
   { name:'PPR热水管', spec:'DN25×4m', stock:500, unit:'根', avgPrice:11.5, industry:'管材', entries:[
-    { docNo:'SH-20260420-003', supplier:'李氏钢材', date:'04-20', qty:200, price:10.80 },
-    { docNo:'SH-20260405-001', supplier:'华南管业', date:'04-05', qty:300, price:12 }
+    { docNo:'SH-20260420-003', supplier:'李氏钢材', date:'04-20 11:20', qty:200, price:10.80 },
+    { docNo:'SH-20260405-001', supplier:'华南管业', date:'04-05 08:50', qty:300, price:12 }
   ]},
   { name:'镀锌钢管', spec:'DN50×6m', stock:80, unit:'根', avgPrice:98, industry:'管材', entries:[
-    { docNo:'SH-20260418-015', supplier:'华南管业', date:'04-18', qty:80, price:98 }
+    { docNo:'SH-20260418-015', supplier:'华南管业', date:'04-18 13:40', qty:80, price:98 }
   ]},
   { name:'PVC排水管', spec:'DN110×4m', stock:200, unit:'根', avgPrice:24, industry:'管材', entries:[
-    { docNo:'SH-20260415-007', supplier:'王记五金', date:'04-15', qty:200, price:24 }
+    { docNo:'SH-20260415-007', supplier:'王记五金', date:'04-15 15:22', qty:200, price:24 }
   ]},
   { name:'水泥', spec:'P.O 42.5', stock:30, unit:'吨', avgPrice:410, industry:'基建材料', entries:[
-    { docNo:'SH-20260412-001', supplier:'华南管业', date:'04-12', qty:30, price:410 }
+    { docNo:'SH-20260412-001', supplier:'华南管业', date:'04-12 09:30', qty:30, price:410 }
   ]},
   { name:'电线', spec:'BV2.5mm²', stock:80, unit:'卷', avgPrice:125, industry:'电气', entries:[
-    { docNo:'SH-20260426-012', supplier:'华南管业', date:'04-26', qty:50, price:125 },
-    { docNo:'SH-20260402-009', supplier:'王记五金', date:'04-02', qty:30, price:125 }
+    { docNo:'SH-20260426-012', supplier:'华南管业', date:'04-26 10:15', qty:50, price:125 },
+    { docNo:'SH-20260402-009', supplier:'王记五金', date:'04-02 14:50', qty:30, price:125 }
   ]},
   { name:'防水涂料', spec:'JS-II', stock:40, unit:'桶', avgPrice:168, industry:'基建材料', entries:[
-    { docNo:'SH-20260426-012', supplier:'华南管业', date:'04-26', qty:20, price:168 },
-    { docNo:'SH-20260401-003', supplier:'王记五金', date:'04-01', qty:20, price:168 }
+    { docNo:'SH-20260426-012', supplier:'华南管业', date:'04-26 11:05', qty:20, price:168 },
+    { docNo:'SH-20260401-003', supplier:'王记五金', date:'04-01 16:30', qty:20, price:168 }
   ]}
 ];
 
 var DEFAULT_OB_RECORDS = [
-  { name:'PE给水管', spec:'DN315×12m', qty:30, unit:'根', price:298, to:'昂生路项目部', date:'04-26', docNo:'CK-20260426-003', manual:false },
-  { name:'镀锌钢管', spec:'DN50×6m', qty:50, unit:'根', price:98, to:'河东区工地', date:'04-24', docNo:'CK-20260424-002', manual:false },
-  { name:'PPR热水管', spec:'DN25×4m', qty:100, unit:'根', price:10.80, to:'昂生路项目部', date:'04-22', docNo:'CK-20260422-001', manual:false },
-  { name:'水泥', spec:'P.O 42.5', qty:5, unit:'吨', price:410, to:'河东区工地', date:'04-20', docNo:null, manual:true },
-  { name:'电线', spec:'BV2.5mm²', qty:20, unit:'卷', price:125, to:'昂生路项目部', date:'04-18', docNo:null, manual:true }
+  { name:'PE给水管', spec:'DN315×12m', qty:30, unit:'根', price:298, to:'昂生路项目部', date:'04-26 15:40', docNo:'CK-20260426-003', manual:false },
+  { name:'镀锌钢管', spec:'DN50×6m', qty:50, unit:'根', price:98, to:'河东区工地', date:'04-24 11:25', docNo:'CK-20260424-002', manual:false },
+  { name:'PPR热水管', spec:'DN25×4m', qty:100, unit:'根', price:10.80, to:'昂生路项目部', date:'04-22 09:50', docNo:'CK-20260422-001', manual:false },
+  { name:'水泥', spec:'P.O 42.5', qty:5, unit:'吨', price:410, to:'河东区工地', date:'04-20 14:10', docNo:null, manual:true },
+  { name:'电线', spec:'BV2.5mm²', qty:20, unit:'卷', price:125, to:'昂生路项目部', date:'04-18 16:35', docNo:null, manual:true }
 ];
 
-var lgData = loadData(STORAGE_KEYS.lgData) || JSON.parse(JSON.stringify(DEFAULT_LG_DATA));
-var obRecords = loadData(STORAGE_KEYS.obRecords) || JSON.parse(JSON.stringify(DEFAULT_OB_RECORDS));
+// 强制刷新默认数据（带时间点版本）
+localStorage.removeItem(STORAGE_KEYS.lgData);
+localStorage.removeItem(STORAGE_KEYS.obRecords);
+var lgData = JSON.parse(JSON.stringify(DEFAULT_LG_DATA));
+var obRecords = JSON.parse(JSON.stringify(DEFAULT_OB_RECORDS));
 
 // FIFO 匹配：出库商品关联入库批次
 function fifoMatch(name, spec, outQty) {
@@ -3119,6 +3165,116 @@ function fifoMatch(name, spec, outQty) {
 }
 
 // 渲染出库详情页
+// ===== 工作区：最近动态（从 lgData + obRecords 合并排序） =====
+function renderWsTimeline() {
+  var events = [];
+  // 入库记录
+  lgData.forEach(function(product, pi) {
+    (product.entries || []).forEach(function(entry, ei) {
+      events.push({
+        type: 'in', name: product.name, spec: product.spec, unit: product.unit,
+        qty: entry.qty, date: entry.date, docNo: entry.docNo, supplier: entry.supplier, price: entry.price,
+        _lgIdx: pi, _entryIdx: ei
+      });
+    });
+  });
+  // 出库记录
+  obRecords.forEach(function(r, idx) {
+    events.push({
+      type: 'out', name: r.name, spec: r.spec, unit: r.unit,
+      qty: r.qty, date: r.date, docNo: r.docNo, to: r.to,
+      _obIdx: idx
+    });
+  });
+  // 按日期降序（最新在前）
+  events.sort(function(a, b) { return b.date.localeCompare(a.date); });
+  // 最多显示5条
+  var top = events.slice(0, 5);
+
+  var html = '<div class="timeline-section-title">最近动态</div>';
+  if (top.length === 0) {
+    html += '<div style="text-align:center;padding:16px;font-size:13px;color:#BBB;">暂无出入库记录</div>';
+  }
+  top.forEach(function(ev) {
+    var isIn = ev.type === 'in';
+    var sign = isIn ? '+' : '-';
+    var onclick = isIn
+      ? 'showInboundDetail(' + ev._lgIdx + ',' + ev._entryIdx + ')'
+      : 'showObDetail(' + ev._obIdx + ')';
+    html += '<div class="timeline-entry" onclick="' + onclick + '" style="cursor:pointer;">';
+    html += '<span class="timeline-dot ' + ev.type + '"></span>';
+    html += '<span class="timeline-label ' + ev.type + '">' + (isIn ? '入库' : '出库') + '</span>';
+    html += '<span class="timeline-text">' + ev.name + ' ' + (ev.spec || '').split('×')[0].split('x')[0] + ' ' + sign + ev.qty + ev.unit + '</span>';
+    html += '<span class="timeline-time">' + ev.date + '</span>';
+    html += '</div>';
+  });
+
+  var el = document.getElementById('wsTimeline');
+  if (el) el.innerHTML = html;
+}
+
+// ===== 入库详情页 =====
+function showInboundDetail(lgIdx, entryIdx) {
+  var product = lgData[lgIdx];
+  if (!product) return;
+  var entry = product.entries[entryIdx];
+  if (!entry) return;
+
+  var amount = entry.qty * entry.price;
+  var page = document.getElementById('page-inbound-detail');
+  var content = page.querySelector('.page-content');
+
+  var html = '<div style="padding:12px 16px;">';
+
+  // 主卡片
+  html += '<div style="background:#fff;border-radius:12px;overflow:hidden;margin-bottom:10px;">';
+
+  // 头部
+  html += '<div style="padding:14px 16px;border-bottom:1px solid #F5F5F5;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
+  html += '<span style="font-size:15px;font-weight:600;color:#222;">' + entry.docNo + '</span>';
+  html += '<span style="font-size:11px;color:#34A853;background:#EAF5EE;padding:2px 8px;border-radius:6px;">已入库</span>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:16px;font-size:12px;color:#999;">';
+  html += '<span>供应商：<b style="color:#666;">' + entry.supplier + '</b></span>';
+  html += '<span>2026-' + entry.date + '</span>';
+  html += '</div>';
+  html += '</div>';
+
+  // 商品
+  html += '<div style="padding:14px 16px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
+  html += '<div style="flex:1;"><div style="font-size:15px;font-weight:600;color:#222;">' + product.name + '</div>';
+  html += '<div style="font-size:12px;color:#999;margin-top:4px;">' + product.spec + ' · ¥' + entry.price + '/' + product.unit + '</div></div>';
+  html += '<div style="text-align:right;"><div style="font-size:18px;font-weight:700;color:#34A853;">+' + entry.qty + '<small style="font-size:12px;color:#999;font-weight:400;">' + product.unit + '</small></div>';
+  html += '<div style="font-size:12px;color:#999;margin-top:2px;">¥' + amount.toLocaleString() + '</div></div>';
+  html += '</div>';
+
+  // 库存概况
+  html += '<div style="margin-top:12px;padding-top:10px;border-top:1px dashed #F0F0F0;">';
+  html += '<div style="font-size:11px;color:#BBB;margin-bottom:6px;">当前库存概况</div>';
+  html += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;">';
+  html += '<span style="color:#666;">当前库存</span><span style="color:#222;font-weight:500;">' + product.stock + product.unit + '</span></div>';
+  html += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;">';
+  html += '<span style="color:#666;">入库批次</span><span style="color:#222;font-weight:500;">' + product.entries.length + '批</span></div>';
+  html += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;">';
+  html += '<span style="color:#666;">均价</span><span style="color:#222;font-weight:500;">¥' + product.avgPrice + '/' + product.unit + '</span></div>';
+  html += '</div>';
+
+  // 合计
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #F0F0F0;">';
+  html += '<span style="font-size:14px;color:#666;font-weight:500;">本次入库金额</span>';
+  html += '<span style="font-size:18px;font-weight:700;color:#34A853;">¥' + amount.toLocaleString() + '</span>';
+  html += '</div>';
+
+  html += '</div>'; // end 商品区域
+  html += '</div>'; // end 主卡片
+  html += '</div>';
+
+  content.innerHTML = html;
+  navigateTo('page-inbound-detail');
+}
+
 function showObDetail(idx) {
   var r = obRecords[idx];
   if (!r) return;
@@ -3606,8 +3762,8 @@ function confirmOutbound() {
   renderObStock();
   saveData();
   updateHomeLedger();
+  lgSetView('outbound');
   navigateTo('page-ledger');
-  renderLedger();
   showToast('出库成功，' + keys.length + ' 种商品已出库');
 }
 
@@ -3753,8 +3909,8 @@ function confirmOutboundScan() {
   selected.forEach(function(item) { totalAmt += item.qty * item.price; });
   saveData();
   updateHomeLedger();
+  lgSetView('outbound');
   navigateTo('page-ledger');
-  renderLedger();
   showToast('出库成功，' + selected.length + ' 项商品已出库');
 }
 
@@ -3834,10 +3990,11 @@ function handleCheckFile(input) {
   if (!input.files || !input.files[0]) return;
   var reader = new FileReader();
   reader.onload = function(e) {
-    ckShowPanel('camera');
-    var img = document.getElementById('ckPreviewImg');
-    img.src = e.target.result; img.style.display = 'block';
-    document.getElementById('ckCaptureBtnRow').style.display = 'none';
+    // 不切换到摄像头面板，直接在选择面板显示轻量 loading
+    var choose = document.getElementById('ckModalChoose');
+    choose.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 0;gap:12px;">' +
+      '<div style="width:32px;height:32px;border:3px solid #E0E0E0;border-top-color:#34A853;border-radius:50%;animation:spin 0.8s linear infinite;"></div>' +
+      '<div style="font-size:14px;color:#666;">AI识别单据中...</div></div>';
     runCheckAI(e.target.result);
   };
   reader.readAsDataURL(input.files[0]);
@@ -3863,27 +4020,40 @@ function runCheckAI(imageDataUrl) {
   var statusText = document.getElementById('ckStatusText');
 
   overlay.classList.add('show');
-  loadingText.textContent = 'AI识别中...';
-  statusText.style.display = 'block';
-  statusText.textContent = ckCheckMode === 'real' ? '正在识别物品和数量...' : '正在识别盘点单据...';
+  loadingText.textContent = ckCheckMode === 'real' ? 'AI识别物品中...' : 'AI识别单据中...';
+  statusText.style.display = 'none';
 
   var settings = getSettings();
 
-  if (settings.claudeApiKey) {
-    var prompt = ckCheckMode === 'real' ? CK_VISION_PROMPT : CK_DOC_PROMPT;
-    if (ckCheckMode === 'doc' && settings.textinAppId && settings.textinSecret) {
-      loadingText.textContent = 'OCR识别单据中...';
-      textinOCR(imageDataUrl, settings).then(function(ocrText) {
+  // 路径1: 有TextIn → OCR + (Claude提取 或 本地规则引擎)
+  if (settings.textinAppId && settings.textinSecret) {
+    loadingText.textContent = 'OCR识别中...';
+    textinOCR(imageDataUrl, settings).then(function(ocrText) {
+      if (settings.claudeApiKey) {
         loadingText.textContent = 'AI提取商品信息...';
         return claudeExtractCheckItems(ocrText, settings);
-      }).then(function(items) { onCheckAIResult(items); })
-        .catch(function(err) {
-          console.error('Check OCR failed:', err);
-          showToast('识别失败，使用演示数据');
-          onCheckAIResult(null);
+      } else {
+        loadingText.textContent = '规则引擎提取中...';
+        return localRuleExtract(ocrText).then(function(result) {
+          return (result.items || []).map(function(it) {
+            return { name: it.name, spec: it.spec || '', qty: it.qty || 0, unit: it.unit || '个', confidence: 'medium' };
+          });
         });
-      return;
-    }
+      }
+    }).then(function(items) {
+      if (items && items.length > 0) { onCheckAIResult(items); }
+      else { showToast('未识别到商品，使用演示数据'); onCheckAIResult(null); }
+    }).catch(function(err) {
+      console.error('Check OCR failed:', err);
+      showToast('识别失败: ' + err.message);
+      onCheckAIResult(null);
+    });
+    return;
+  }
+
+  // 路径2: 只有Claude → Vision直接识别
+  if (settings.claudeApiKey) {
+    var prompt = ckCheckMode === 'real' ? CK_VISION_PROMPT : CK_DOC_PROMPT;
     claudeVisionCheck(imageDataUrl, prompt, settings)
       .then(function(items) { onCheckAIResult(items); })
       .catch(function(err) {
@@ -3894,6 +4064,7 @@ function runCheckAI(imageDataUrl) {
     return;
   }
 
+  // 路径3: 都没配 → 演示数据
   setTimeout(function() {
     showToast('未配置API Key，使用演示数据');
     onCheckAIResult(null);
@@ -4187,8 +4358,8 @@ function confirmAdjust() {
     });
     saveData();
     updateHomeLedger();
+    lgSetView('sku');
     navigateTo('page-ledger');
-    renderLedger();
     showToast('库存修正完成，' + diffCount + ' 项已更新');
   });
 }
