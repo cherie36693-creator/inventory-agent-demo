@@ -1512,8 +1512,8 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
     </div>
     <div class="page-content" style="padding:12px 16px;">
       <div class="ck-edit-page-header">
-        <div class="ck-edit-page-title">识别结果 <span id="ckEditCount"></span></div>
-        <div class="ck-edit-page-hint">请确认或修正数量</div>
+        <div class="ck-edit-page-title">盘点结果 <span id="ckEditCount"></span></div>
+        <div class="ck-edit-page-hint">已自动与台账对比，可修正实际数量</div>
       </div>
       <div id="ckEditList"></div>
     </div>
@@ -4178,23 +4178,38 @@ function renderCheckEditTable() {
   navigateTo('page-check-edit');
   document.getElementById('ckEditCount').textContent = '(' + ckEditItems.length + '项)';
 
-  var html = '<table class="ck-edit-table"><thead><tr><th>商品</th><th>盘点</th><th>账面</th><th>差异</th></tr></thead><tbody>';
+  var html = '';
   ckEditItems.forEach(function(item, idx) {
     var diff = item.lgMatch ? item.qty - item.sysQty : item.qty;
-    var diffText = '', diffClass = '';
-    if (item.lgMatch) {
-      if (diff > 0) { diffText = '+' + diff; diffClass = 'gain'; }
-      else if (diff < 0) { diffText = '' + diff; diffClass = 'loss'; }
-      else { diffText = '='; diffClass = 'ok'; }
-    } else { diffText = '新'; diffClass = 'new'; }
-    html += '<tr>';
-    html += '<td><div class="ck-t-name">' + item.name + '</div></td>';
-    html += '<td><input type="number" class="ck-t-input" value="' + item.qty + '" onchange="updateCheckEditQty(' + idx + ',this.value)"/></td>';
-    html += '<td class="ck-t-sys">' + (item.lgMatch ? item.sysQty : '-') + '</td>';
-    html += '<td class="ck-t-diff ' + diffClass + '">' + diffText + '</td>';
-    html += '</tr>';
+    var statusHtml = '';
+    if (!item.lgMatch) {
+      statusHtml = '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;background:#FFF3E0;color:#E65100;">新商品，台账中暂无记录</span>';
+    } else if (diff === 0) {
+      statusHtml = '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;background:#E8F5E9;color:#2E7D32;">数量一致</span>';
+    } else if (diff > 0) {
+      statusHtml = '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;background:#E3F2FD;color:#1565C0;">盘盈 +' + diff + '</span>';
+    } else {
+      statusHtml = '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;background:#FBE9E7;color:#BF360C;">盘亏 ' + diff + '</span>';
+    }
+
+    html += '<div style="background:#fff;border-radius:12px;padding:14px;margin-bottom:8px;">';
+    // 第一行：名称 + 规格 + 状态标签
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;">';
+    html += '<div style="display:flex;align-items:baseline;gap:6px;">';
+    html += '<span style="font-size:15px;font-weight:600;color:#222;">' + item.name + '</span>';
+    if (item.spec) html += '<span style="font-size:12px;color:#999;">' + item.spec + '</span>';
+    html += '</div>';
+    html += statusHtml;
+    html += '</div>';
+    // 第二行：盘点 vs 台账
+    html += '<div style="display:flex;align-items:center;margin-top:14px;gap:0;">';
+    html += '<div style="flex:1;text-align:center;"><div style="font-size:11px;color:#999;margin-bottom:6px;">盘点数量</div>';
+    html += '<input type="number" class="ck-t-input" value="' + item.qty + '" onchange="updateCheckEditQty(' + idx + ',this.value)" style="width:72px;padding:8px;border-radius:10px;border:1.5px solid #34A853;background:#fff;color:#222;font-size:20px;font-weight:700;font-family:inherit;text-align:center;"/></div>';
+    html += '<div style="color:#ccc;font-size:18px;flex-shrink:0;">vs</div>';
+    html += '<div style="flex:1;text-align:center;"><div style="font-size:11px;color:#999;margin-bottom:6px;">台账库存</div>';
+    html += '<div style="font-size:20px;font-weight:700;color:' + (item.lgMatch ? '#222' : '#ccc') + ';padding:8px 0;">' + (item.lgMatch ? item.sysQty : '-') + '</div></div>';
+    html += '</div></div>';
   });
-  html += '</tbody></table>';
   document.getElementById('ckEditList').innerHTML = html;
 }
 
