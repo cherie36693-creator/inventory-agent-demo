@@ -1112,9 +1112,12 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
 
 /* Mobile adaptation - remove phone frame on real devices */
 @media screen and (max-width: 500px) {
-  body { background: #F5F5F5; min-height: 100vh; min-height: 100dvh; }
-  .phone-frame { width: 100%; height: 100vh; height: 100dvh; border-radius: 0; box-shadow: none; }
-  .tab-bar { padding-bottom: env(safe-area-inset-bottom, 20px); }
+  html, body { background: #F5F5F5 !important; margin: 0; padding: 0; width: 100%; height: 100%; min-height: 100vh; min-height: 100dvh; display: block !important; overflow: hidden; }
+  .phone-frame { width: 100% !important; height: 100% !important; min-height: 100vh; min-height: 100dvh; max-width: none !important; max-height: none !important; border-radius: 0 !important; box-shadow: none !important; border: none !important; position: fixed !important; top: 0; left: 0; }
+  .status-bar { display: none !important; }
+  .workspace-header { padding-top: 12px; }
+  .nav-header { height: 44px; padding-top: 0; }
+  .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; padding-bottom: env(safe-area-inset-bottom, 20px); }
 }
 
 </style>
@@ -4279,21 +4282,19 @@ function renderCheckEditTable() {
     }
 
     html += '<div style="background:#fff;border-radius:12px;padding:14px;margin-bottom:8px;">';
-    // 第一行：名称 + 规格 + 状态标签
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;">';
-    html += '<div style="display:flex;align-items:baseline;gap:6px;">';
+    // 第一行：名称 + 规格（自然换行）
+    html += '<div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">';
     html += '<span style="font-size:15px;font-weight:600;color:#222;">' + item.name + '</span>';
     if (item.spec) html += '<span style="font-size:12px;color:#999;">' + item.spec + '</span>';
-    html += '</div>';
     html += statusHtml;
     html += '</div>';
-    // 第二行：盘点 vs 台账
-    html += '<div style="display:flex;align-items:center;margin-top:14px;gap:0;">';
-    html += '<div style="flex:1;text-align:center;"><div style="font-size:11px;color:#999;margin-bottom:6px;">盘点数量</div>';
-    html += '<input type="number" class="ck-t-input" value="' + item.qty + '" onchange="updateCheckEditQty(' + idx + ',this.value)" style="width:72px;padding:8px;border-radius:10px;border:1.5px solid #34A853;background:#fff;color:#222;font-size:20px;font-weight:700;font-family:inherit;text-align:center;"/></div>';
-    html += '<div style="color:#ccc;font-size:18px;flex-shrink:0;">vs</div>';
-    html += '<div style="flex:1;text-align:center;"><div style="font-size:11px;color:#999;margin-bottom:6px;">台账库存</div>';
-    html += '<div style="font-size:20px;font-weight:700;color:' + (item.lgMatch ? '#222' : '#ccc') + ';padding:8px 0;">' + (item.lgMatch ? item.sysQty : '-') + '</div></div>';
+    // 第二行：盘点 vs 台账（紧凑水平布局）
+    html += '<div style="display:flex;align-items:center;margin-top:12px;">';
+    html += '<div style="flex:1;display:flex;align-items:center;gap:8px;"><span style="font-size:12px;color:#999;flex-shrink:0;">盘点</span>';
+    html += '<input type="number" class="ck-t-input" value="' + item.qty + '" onchange="updateCheckEditQty(' + idx + ',this.value)" style="width:64px;padding:6px 8px;border-radius:8px;border:1.5px solid #34A853;background:#fff;color:#222;font-size:18px;font-weight:700;font-family:inherit;text-align:center;"/></div>';
+    html += '<div style="color:#ccc;font-size:14px;flex-shrink:0;margin:0 8px;">vs</div>';
+    html += '<div style="flex:1;display:flex;align-items:center;gap:8px;justify-content:flex-end;"><span style="font-size:12px;color:#999;flex-shrink:0;">台账</span>';
+    html += '<div style="font-size:18px;font-weight:700;color:' + (item.lgMatch ? '#222' : '#ccc') + ';">' + (item.lgMatch ? item.sysQty : '-') + '</div></div>';
     html += '</div></div>';
   });
   document.getElementById('ckEditList').innerHTML = html;
