@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>库存助手 - Agent Demo</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -1110,6 +1110,13 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
     }
     .cs-ai-save-link:active { color: #666; }
 
+/* Mobile adaptation - remove phone frame on real devices */
+@media screen and (max-width: 500px) {
+  body { background: #F5F5F5; min-height: 100vh; min-height: 100dvh; }
+  .phone-frame { width: 100%; height: 100vh; height: 100dvh; border-radius: 0; box-shadow: none; }
+  .tab-bar { padding-bottom: env(safe-area-inset-bottom, 20px); }
+}
+
 </style>
 </head>
 <body>
@@ -1836,8 +1843,10 @@ var AI_INDUSTRIES = {
 function aiAnalyzeDocument(imageDataUrl) {
   var settings = getSettings();
   if (settings.textinAppId && settings.textinSecret) {
-    showToast('TextIn OCR 识别中...');
-    return textinOCR(imageDataUrl, settings).then(function(ocrText) {
+    showToast('OCR 识别中...');
+    return compressImage(imageDataUrl, 1200).then(function(compressed) {
+      return textinOCR(compressed, settings);
+    }).then(function(ocrText) {
       if (settings.claudeApiKey) {
         showToast('Claude 智能提取中...');
         return claudeExtract(ocrText, settings);
@@ -1866,6 +1875,26 @@ function aiAnalyzeLocal() {
   });
 }
 
+// ===== 图片压缩（减少上传体积加快OCR） =====
+function compressImage(dataUrl, maxWidth) {
+  maxWidth = maxWidth || 1600;
+  return new Promise(function(resolve) {
+    var img = new Image();
+    img.onload = function() {
+      if (img.width <= maxWidth) { resolve(dataUrl); return; }
+      var ratio = maxWidth / img.width;
+      var canvas = document.createElement('canvas');
+      canvas.width = maxWidth;
+      canvas.height = Math.round(img.height * ratio);
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = function() { resolve(dataUrl); };
+    img.src = dataUrl;
+  });
+}
+
 // ===== Step 1: TextIn xParse OCR =====
 function getTextinUrl() {
   return '/proxy/ai/service/v1/pdf_to_markdown';
@@ -1878,14 +1907,15 @@ function textinOCR(imageDataUrl, settings) {
     var bytes = new Uint8Array(binary.length);
     for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
 
-    var proxyUrl = '/proxy/ai/service/v1/pdf_to_markdown';
-    var directUrl = 'https://api.textin.com/ai/service/v1/pdf_to_markdown';
+    // 快速接口优先：通用OCR（recognize）比 pdf_to_markdown 快 3-5 倍
+    var fastUrl = 'https://api.textin.com/ai/service/v1/recognize';
+    var fullUrl = 'https://api.textin.com/ai/service/v1/pdf_to_markdown';
 
-    doTextinRequest(proxyUrl, bytes, settings, function(err, md) {
-      if (!err && md) { resolve(md); return; }
-      // 代理失败，尝试直连
-      console.log('Proxy failed, trying direct:', err);
-      doTextinRequest(directUrl, bytes, settings, function(err2, md2) {
+    doTextinRequest(fastUrl, bytes, settings, function(err, text) {
+      if (!err && text) { resolve(text); return; }
+      // 快速接口失败，fallback 到完整解析
+      console.log('Fast OCR failed, trying full parse:', err);
+      doTextinRequest(fullUrl, bytes, settings, function(err2, md2) {
         if (!err2 && md2) resolve(md2);
         else reject(err2 || new Error('OCR 失败'));
       });
@@ -1898,13 +1928,22 @@ function doTextinRequest(url, bytes, settings, callback) {
   xhr.open('POST', url);
   xhr.setRequestHeader('x-ti-app-id', settings.textinAppId);
   xhr.setRequestHeader('x-ti-secret-code', settings.textinSecret);
-  xhr.timeout = 30000;
+  xhr.timeout = 15000;
   xhr.onload = function() {
     try {
       var resp = JSON.parse(xhr.responseText);
       if (resp.code === 200) {
-        var md = resp.result && resp.result.markdown;
-        if (md) callback(null, md);
+        // 兼容多种返回格式
+        var text = '';
+        if (resp.result && resp.result.markdown) {
+          text = resp.result.markdown;
+        } else if (resp.result && resp.result.lines) {
+          // recognize 接口返回 lines 数组
+          text = resp.result.lines.map(function(l) { return l.text || ''; }).join('\n');
+        } else if (resp.result && resp.result.text) {
+          text = resp.result.text;
+        }
+        if (text) callback(null, text);
         else callback(new Error('OCR 返回为空'));
       } else {
         callback(new Error('OCR 错误: ' + (resp.message || resp.code)));
@@ -2045,16 +2084,41 @@ function localRuleExtract(ocrText) {
     if (dateMatch) result.date = dateMatch[1] + '-' + ('0' + dateMatch[2]).slice(-2) + '-' + ('0' + dateMatch[3]).slice(-2);
 
     // 单号提取
-    var docNoMatch = text.match(/[编号单号No\.]+\s*[：:]\s*([A-Za-z0-9\-]+)/);
-    if (docNoMatch) result.docNo = docNoMatch[1];
+    // 单号提取（多种格式）
+    var docNoPatterns = [
+      /(?:单据?号|编号|单号|No\.?|NO\.?)[：:\s]*\s*([A-Za-z0-9\-]+)/i,
+      /([A-Z]{2,4}-\d{6,}[-\d]*)/,
+      /(?:单据|凭证)\s*[：:]\s*([A-Za-z0-9\-]+)/
+    ];
+    for (var dp = 0; dp < docNoPatterns.length; dp++) {
+      var dm = text.match(docNoPatterns[dp]);
+      if (dm && dm[1]) { result.docNo = dm[1]; break; }
+    }
 
-    // 供应商/公司名提取
-    var companyMatch = text.match(/([一-龥]{2,}(?:有限)?(?:公司|集团|工厂|商店|商行|经营部|批发部|配送中心))/);
-    if (companyMatch) result.supplier = companyMatch[1];
+    // 表头关键词 — 如果提取结果纯粹是这些词，说明提取了表头
+    var HEADER_WORDS = /^(名称|品名|品种|商品|物资|材料|货物|产品|规格|型号|单位|数量|单价|价格|金额|总价|总额|序号|编号|备注|材料名称|商品名称|货物名称|产品名称)$/;
 
-    // 收货方/客户提取
-    var receiverMatch = text.match(/(?:客户|收货|领用人|领料员|收货方|接收)[：:\s]*\s*([一-龥A-Za-z0-9]+)/);
-    if (receiverMatch) result.receiver = receiverMatch[1];
+    // 供应商提取（多种模式）
+    var supplierPatterns = [
+      /(?:供[应货]商|供[应货]方|发货[方人单位]|卖[方家]|销售[方单位]|供方|甲方)[：:\s]*\s*([一-龥A-Za-z0-9()（）]{2,})/,
+      /([一-龥]{2,}(?:有限)?(?:公司|集团|工厂|商店|商行|经营部|批发部|配送中心|贸易|建材|物资))/
+    ];
+    for (var sp = 0; sp < supplierPatterns.length; sp++) {
+      var sm = text.match(supplierPatterns[sp]);
+      if (sm && sm[1] && sm[1].length >= 2) { result.supplier = sm[1]; break; }
+    }
+
+    // 收货方/客户提取（扩大匹配范围）
+    var receiverPatterns = [
+      /(?:收货[方人单位]|客户[名称]?|购[货买]方|需求方|订货[方人单位]|乙方)[：:\s]*\s*([一-龥A-Za-z0-9()（）]{2,})/,
+      /(?:送[达到货](?:地址|方|单位)?|工[地程]名?称?|项目[部名]?称?)[：:\s]+\s*([一-龥A-Za-z0-9()（）]{2,})/,
+      /(?:领用[人员部门]|领料[人员]|接收[方人]|提货[方人]|签收[方人])[：:\s]*\s*([一-龥A-Za-z0-9]{2,})/,
+      /(?:收货|送达|配送)[^一-龥]*([一-龥]{2,}(?:项目部|工地|工程|门店|仓库|车间))/
+    ];
+    for (var rp = 0; rp < receiverPatterns.length; rp++) {
+      var rm = text.match(receiverPatterns[rp]);
+      if (rm && rm[1] && rm[1].length >= 2 && !HEADER_WORDS.test(rm[1])) { result.receiver = rm[1]; break; }
+    }
 
     // ===== 表格提取：HTML table（TextIn格式）→ markdown → 纯文本 =====
 
@@ -2158,7 +2222,7 @@ function localRuleExtract(ocrText) {
           if (!itemPrice && itemQty && itemAmt) itemPrice = Math.round(itemAmt / itemQty * 100) / 100;
           if (!itemUnit) itemUnit = '个';
 
-          if (itemName && !SKIP_ROW_RE.test(itemName) && (itemQty > 0 || itemPrice > 0 || itemAmt > 0)) {
+          if (itemName && !SKIP_ROW_RE.test(itemName) && !HEADER_WORDS.test(itemName) && (itemQty > 0 || itemPrice > 0 || itemAmt > 0)) {
             result.items.push({ name: itemName, spec: itemSpec, qty: itemQty || 1, unit: itemUnit, price: itemPrice, amount: itemAmt || itemQty * itemPrice });
           }
         }
@@ -2204,7 +2268,7 @@ function localRuleExtract(ocrText) {
           var amt = mai >= 0 ? parseFloat(String(cells[mai] || '').replace(/[,，\s]/g, '')) || 0 : 0;
           if (!amt && qty && price) amt = qty * price;
           if (!price && qty && amt) price = Math.round(amt / qty * 100) / 100;
-          if (name && !SKIP_ROW_RE.test(name) && (qty > 0 || price > 0 || amt > 0)) {
+          if (name && !SKIP_ROW_RE.test(name) && !HEADER_WORDS.test(name) && (qty > 0 || price > 0 || amt > 0)) {
             result.items.push({ name: name, spec: spec, qty: qty || 1, unit: unit, price: price, amount: amt || qty * price });
           }
         });
@@ -2228,11 +2292,49 @@ function localRuleExtract(ocrText) {
             var q2 = parseFloat(nums[0].replace(/,/g, '')) || 0;
             var p2 = nums.length >= 2 ? parseFloat(nums[1].replace(/,/g, '')) || 0 : 0;
             var a2 = nums.length >= 3 ? parseFloat(nums[2].replace(/,/g, '')) || 0 : q2 * p2;
-            if (q2 > 0 && n2 && !SKIP_ROW_RE.test(n2)) {
+            if (q2 > 0 && n2 && !SKIP_ROW_RE.test(n2) && !HEADER_WORDS.test(n2)) {
               result.items.push({ name: n2, spec: s2, qty: q2, unit: '个', price: p2, amount: a2 || q2 * p2 });
             }
           }
         }
+      });
+    }
+
+    // 方式3：宽松提取 — 扫描每行，找"中文名 + 数字"模式
+    if (result.items.length === 0) {
+      lines.forEach(function(line) {
+        if (SKIP_ROW_RE.test(line)) return;
+        // 跳过表头行
+        if (NAME_RE.some(function(re) { return re.test(line); }) && QTY_RE.some(function(re) { return re.test(line); })) return;
+        // 匹配：中文名称（2字以上）后跟数字
+        var m3 = line.match(/([一-龥]{2,}[\w\-.*×xX\d]*)\s+([\d,.]+)\s*([\w一-龥]*)\s*[×xX*]?\s*([\d,.]*)/);
+        if (m3) {
+          var name3 = m3[1].trim();
+          var qty3 = parseFloat(m3[2].replace(/,/g, '')) || 0;
+          var unit3 = m3[3] || '个';
+          var price3 = m3[4] ? parseFloat(m3[4].replace(/,/g, '')) || 0 : 0;
+          if (qty3 > 0 && name3.length >= 2 && !SKIP_ROW_RE.test(name3) && !HEADER_WORDS.test(name3)) {
+            result.items.push({ name: name3, spec: '', qty: qty3, unit: unit3 || '个', price: price3, amount: qty3 * price3 });
+          }
+        }
+      });
+    }
+
+    // 方式4：最后兜底 — 从全文找所有看起来像商品名的中文词
+    if (result.items.length === 0) {
+      var productPatterns = /([一-龥]{2,}(?:管|线|板|钢|泥|漆|胶|砖|材|箱|泵|阀|灯|柜|器|机|仪|瓦|梁|柱|涂料|水泥|电线|电缆|钢筋|钢管|水管|型材|角铁|螺丝|螺母|螺栓|扣件|垫片|法兰|弯头|三通|开关|插座|电表|配电|变压))/g;
+      var pm;
+      var foundProducts = [];
+      while ((pm = productPatterns.exec(text)) !== null) {
+        var pname = pm[1];
+        if (foundProducts.indexOf(pname) < 0 && !SKIP_ROW_RE.test(pname)) foundProducts.push(pname);
+      }
+      foundProducts.forEach(function(pn) {
+        // 尝试在商品名附近找数字
+        var nearbyRe = new RegExp(pn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[^\\d]*?(\\d[\\d,.]*)', 'i');
+        var nm = text.match(nearbyRe);
+        var pqty = nm ? parseFloat(nm[1].replace(/,/g, '')) || 1 : 1;
+        result.items.push({ name: pn, spec: '', qty: pqty, unit: '个', price: 0, amount: 0 });
       });
     }
 
@@ -2257,15 +2359,45 @@ function localRuleExtract(ocrText) {
       }
     }
 
+    // ===== 数据清洗：过滤明显错误的提取结果 =====
+    result.items = result.items.filter(function(item) {
+      // 过滤表头关键词误提取
+      if (HEADER_WORDS.test(item.name)) return false;
+      // 过滤纯数字/纯符号的名称
+      if (/^[\d\s\.,;:!?]+$/.test(item.name)) return false;
+      // 过滤名称太短（单字）
+      if (item.name.length < 2) return false;
+      // 过滤单价明显异常（单价>50000元/单位 大概率是金额被当成单价）
+      if (item.price > 50000 && item.qty <= 5) {
+        // 可能是金额被当成了单价，尝试修正
+        if (item.amount === 0 || item.amount === item.price) {
+          item.amount = item.price;
+          item.price = item.qty > 0 ? Math.round(item.amount / item.qty * 100) / 100 : 0;
+        }
+      }
+      // 过滤数量异常（>100000 大概率是错误提取）
+      if (item.qty > 100000) return false;
+      return true;
+    });
+
+    // 去重：相同名称的商品只保留第一条
+    var seenNames = {};
+    result.items = result.items.filter(function(item) {
+      var key = item.name + '|' + (item.spec || '');
+      if (seenNames[key]) return false;
+      seenNames[key] = true;
+      return true;
+    });
+
     console.log('[Rule Extract] items:', result.items.length, JSON.stringify(result.items));
 
     if (result.items.length === 0) {
       if (docTotal > 0) {
-        result.items.push({ name: '单据商品（待确认）', spec: '请在确认页手动修改', qty: 1, unit: '批', price: docTotal, amount: docTotal });
+        result.items.push({ name: '待确认商品', spec: '点击名称可修改', qty: 1, unit: '批', price: docTotal, amount: docTotal });
       } else {
-        result.items.push({ name: '未识别商品', spec: '请手动修改', qty: 1, unit: '个', price: 0, amount: 0 });
+        result.items.push({ name: '待确认商品', spec: '点击名称可修改', qty: 1, unit: '个', price: 0, amount: 0 });
       }
-      showToast('商品明细需要手动确认');
+      showToast('未能识别商品名，请手动修改');
     }
     resolve(result);
   });
@@ -3060,9 +3192,10 @@ function confirmInbound() {
 function doConfirmInbound() {
   var count = ibItems.length;
   var totalAmt = 0;
-  var dateStr = ('0' + (new Date().getMonth()+1)).slice(-2) + '-' + ('0' + new Date().getDate()).slice(-2);
+  var now = new Date();
+  var dateStr = ('0' + (now.getMonth()+1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2) + ' ' + ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
   var docNo = currentAiResult ? (currentAiResult.docNo || '') : '';
-  var supplier = currentAiResult ? (currentAiResult.supplier || '未知') : '手动入库';
+  var supplier = currentAiResult ? (currentAiResult.supplier || '扫描入库') : '手动入库';
 
   ibItems.forEach(function(item) {
     totalAmt += item.qty * item.price;
@@ -3139,11 +3272,14 @@ var DEFAULT_OB_RECORDS = [
   { name:'电线', spec:'BV2.5mm²', qty:20, unit:'卷', price:125, to:'昂生路项目部', date:'04-18 16:35', docNo:null, manual:true }
 ];
 
-// 强制刷新默认数据（带时间点版本）
-localStorage.removeItem(STORAGE_KEYS.lgData);
-localStorage.removeItem(STORAGE_KEYS.obRecords);
-var lgData = JSON.parse(JSON.stringify(DEFAULT_LG_DATA));
-var obRecords = JSON.parse(JSON.stringify(DEFAULT_OB_RECORDS));
+// 清理脏数据后重置为默认
+if (!localStorage.getItem('inv_data_clean_v2')) {
+  localStorage.removeItem(STORAGE_KEYS.lgData);
+  localStorage.removeItem(STORAGE_KEYS.obRecords);
+  localStorage.setItem('inv_data_clean_v2', '1');
+}
+var lgData = loadData(STORAGE_KEYS.lgData) || JSON.parse(JSON.stringify(DEFAULT_LG_DATA));
+var obRecords = loadData(STORAGE_KEYS.obRecords) || JSON.parse(JSON.stringify(DEFAULT_OB_RECORDS));
 
 // FIFO 匹配：出库商品关联入库批次
 function fifoMatch(name, spec, outQty) {
@@ -3279,85 +3415,39 @@ function showObDetail(idx) {
   var r = obRecords[idx];
   if (!r) return;
   var amount = r.qty * r.price;
-  var matches = fifoMatch(r.name, r.spec, r.qty);
   var page = document.getElementById('page-outbound-detail');
   var content = page.querySelector('.page-content');
 
   var html = '<div style="padding:12px 16px;">';
 
-  // === 主卡片：头部 + 商品明细 + 合计 合为一体 ===
-  html += '<div style="background:#fff;border-radius:12px;overflow:hidden;margin-bottom:10px;">';
-
-  // 头部区域
-  html += '<div style="padding:14px 16px;border-bottom:1px solid #F5F5F5;">';
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
-  html += '<span style="font-size:15px;font-weight:600;color:#222;">' + (r.manual ? '手动出库' : r.docNo) + '</span>';
-  html += '<span style="font-size:11px;color:' + (r.manual ? '#F57C00' : '#E53935') + ';background:' + (r.manual ? '#FFF3E0' : '#FEECEB') + ';padding:2px 8px;border-radius:6px;">' + (r.manual ? '手动出库' : '已出库') + '</span>';
+  // 头部信息卡（与入库统一风格）
+  html += '<div style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+  html += '<span style="font-size:14px;font-weight:600;color:#222;">' + (r.manual ? '手动出库' : r.docNo) + '</span>';
+  html += '<span style="font-size:11px;color:#E53935;background:#FEECEB;padding:2px 8px;border-radius:6px;">已出库</span>';
   html += '</div>';
-  html += '<div style="display:flex;gap:16px;font-size:12px;color:#999;">';
-  html += '<span>收货方：<b style="color:#666;">' + r.to + '</b></span>';
-  html += '<span>2026-' + r.date + '</span>';
-  html += '</div>';
-  html += '</div>';
+  html += '<div style="font-size:12px;color:#999;line-height:1.8;">';
+  html += '<div>收货方：' + (r.to || '未知') + '</div>';
+  html += '<div>出库时间：2026-' + r.date + '</div>';
+  html += '<div>出库商品：' + r.name + ' ' + r.spec + ' · ' + r.qty + r.unit + '</div>';
+  html += '<div>出库金额：¥' + amount.toLocaleString() + '</div>';
+  html += '</div></div>';
 
-  // 商品区域
-  html += '<div style="padding:14px 16px;">';
-  html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
-  html += '<div style="flex:1;"><div style="font-size:15px;font-weight:600;color:#222;">' + r.name + '</div>';
-  html += '<div style="font-size:12px;color:#999;margin-top:4px;">' + r.spec + ' · ¥' + r.price + '/' + r.unit + '</div></div>';
-  html += '<div style="text-align:right;"><div style="font-size:18px;font-weight:700;color:#E53935;">-' + r.qty + '<small style="font-size:12px;color:#999;font-weight:400;">' + r.unit + '</small></div>';
-  html += '<div style="font-size:12px;color:#999;margin-top:2px;">¥' + amount.toLocaleString() + '</div></div>';
-  html += '</div>';
-
-  // 批次来源（内嵌在商品区域下方）
-  if (matches.length > 0) {
-    html += '<div style="margin-top:12px;padding-top:10px;border-top:1px dashed #F0F0F0;">';
-    html += '<div style="font-size:11px;color:#BBB;margin-bottom:6px;">库存扣减来源</div>';
-    matches.forEach(function(m) {
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;">';
-      html += '<span style="color:#666;">' + m.supplier + ' · ' + m.date + '</span>';
-      html += '<span style="color:#222;font-weight:500;">' + m.qty + r.unit + '</span></div>';
-    });
-    var matchedQty = 0;
-    matches.forEach(function(m) { matchedQty += m.qty; });
-    var shortage = r.qty - matchedQty;
-    if (shortage > 0) {
-      html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;color:#F57C00;">';
-      html += '<span>未匹配批次</span><span style="font-weight:500;">' + shortage + r.unit + '</span></div>';
-    }
-    html += '</div>';
-  } else if (!r.manual) {
-    html += '<div style="margin-top:12px;padding-top:10px;border-top:1px dashed #F0F0F0;font-size:12px;color:#F57C00;display:flex;align-items:center;gap:4px;">';
-    html += '<span>⚠</span><span>该商品没有进货记录</span></div>';
-  }
-
-  // 合计
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #F0F0F0;">';
-  html += '<span style="font-size:14px;color:#666;font-weight:500;">合计金额</span>';
-  html += '<span style="font-size:18px;font-weight:700;color:#E53935;">¥' + amount.toLocaleString() + '</span>';
-  html += '</div>';
-
-  html += '</div>'; // end 商品区域
-  html += '</div>'; // end 主卡片
-
-  // 手动出库提示
-  if (r.manual) {
-    html += '<div style="display:flex;align-items:center;gap:6px;padding:10px 16px;font-size:11px;color:#F57C00;background:#FFF8F0;border-radius:10px;margin-bottom:10px;">';
-    html += '<span>⚠</span><span>无关联单据，由操作人手动录入</span></div>';
-  }
-
-  // === 原始扫描件（独立卡片，有内容时才突出显示） ===
+  // 原始扫描件区（与入库统一风格）
   if (r.scanImage) {
     html += '<div style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px;">';
     html += '<div style="font-size:13px;font-weight:600;color:#222;margin-bottom:10px;">原始扫描件</div>';
     html += '<div style="border-radius:8px;overflow:hidden;border:1px solid #F0F0F0;">';
     html += '<img src="' + r.scanImage + '" style="width:100%;display:block;">';
     html += '</div></div>';
-  } else if (!r.manual) {
-    html += '<div style="text-align:center;padding:12px;font-size:12px;color:#CCC;">暂无关联扫描件</div>';
+  } else {
+    html += '<div style="background:#fff;border-radius:12px;padding:20px 16px;margin-bottom:10px;text-align:center;">';
+    html += '<div style="font-size:13px;color:#CCC;margin-bottom:4px;">暂无原始扫描件</div>';
+    html += '<div style="font-size:11px;color:#DDD;">拍照出库的单据会自动保存原图</div>';
+    html += '</div>';
   }
 
-  html += '<div style="text-align:center;padding:10px;font-size:12px;color:#BBB;">出库记录已同步至库存台账</div>';
+  html += '<div style="text-align:center;padding:14px;font-size:12px;color:#BBB;">已保存至「全部文档」</div>';
   html += '</div>';
 
   content.innerHTML = html;
@@ -3433,20 +3523,9 @@ function renderReceiptDetailPage(product, entry) {
     html += '<img src="' + entry.scanImage + '" style="width:100%;display:block;">';
     html += '</div></div>';
   } else {
-    // 生成模拟单据（兼容历史数据）
-    html += '<div class="ib-mock-receipt">';
-    html += '<div class="ib-receipt-logo">' + (entry.supplier || '未知供应商') + '</div>';
-    html += '<div class="ib-receipt-type">送 货 单</div>';
-    html += '<div class="ib-receipt-info">';
-    if (entry.docNo) html += '<div>单据编号：' + entry.docNo + '</div>';
-    html += '<div>日期：2026-' + entry.date + '</div>';
-    html += '</div>';
-    html += '<table class="ib-receipt-table"><tr><th>品名</th><th>规格</th><th>数量</th><th>单价</th><th>金额</th></tr>';
-    docItems.forEach(function(item) {
-      html += '<tr><td>' + item.name + '</td><td>' + item.spec + '</td><td>' + item.qty + item.unit + '</td><td>' + item.price.toFixed(2) + '</td><td>' + (item.qty * item.price).toLocaleString() + '</td></tr>';
-    });
-    html += '</table>';
-    html += '<div class="ib-receipt-total">合计金额：¥' + docTotal.toLocaleString() + '</div>';
+    html += '<div style="background:#fff;border-radius:12px;padding:20px 16px;margin-bottom:10px;text-align:center;">';
+    html += '<div style="font-size:13px;color:#CCC;margin-bottom:4px;">暂无原始扫描件</div>';
+    html += '<div style="font-size:11px;color:#DDD;">拍照入库的单据会自动保存原图</div>';
     html += '</div>';
   }
 
@@ -3754,7 +3833,7 @@ function confirmOutbound() {
     // 生成出库记录
     obRecords.unshift({
       name: d.name, spec: d.spec, qty: outQty, unit: d.unit, price: d.avgPrice,
-      to: '手动出库', date: ('0' + (new Date().getMonth()+1)).slice(-2) + '-' + ('0' + new Date().getDate()).slice(-2),
+      to: '手动出库', date: ('0' + (new Date().getMonth()+1)).slice(-2) + '-' + ('0' + new Date().getDate()).slice(-2) + ' ' + ('0' + new Date().getHours()).slice(-2) + ':' + ('0' + new Date().getMinutes()).slice(-2),
       docNo: null, manual: true
     });
   });
@@ -3901,7 +3980,7 @@ function confirmOutboundScan() {
     }
     obRecords.unshift({
       name: item.name, spec: item.spec, qty: item.qty, unit: item.unit, price: item.price,
-      to: '昂生路项目部', date: ('0' + (new Date().getMonth()+1)).slice(-2) + '-' + ('0' + new Date().getDate()).slice(-2),
+      to: (currentAiResult && currentAiResult.receiver) ? currentAiResult.receiver : '扫描出库', date: ('0' + (new Date().getMonth()+1)).slice(-2) + '-' + ('0' + new Date().getDate()).slice(-2) + ' ' + ('0' + new Date().getHours()).slice(-2) + ':' + ('0' + new Date().getMinutes()).slice(-2),
       docNo: docNo, manual: false, scanImage: currentScanImage || null
     });
   });
@@ -3923,9 +4002,14 @@ var ckCheckMode = 'real';
 var ckCameraStream = null;
 var ckEditItems = [];
 
+var ckChooseOriginal = '';
 function openCheckModal() {
   document.getElementById('ckModal').style.display = 'flex';
-  document.getElementById('ckModalChoose').style.display = 'block';
+  var choose = document.getElementById('ckModalChoose');
+  // 首次保存原始内容，之后每次恢复
+  if (!ckChooseOriginal) ckChooseOriginal = choose.innerHTML;
+  else choose.innerHTML = ckChooseOriginal;
+  choose.style.display = 'block';
   document.getElementById('ckModalCamera').style.display = 'none';
   document.getElementById('ckPreviewImg').style.display = 'none';
   document.getElementById('checkAiOverlay').classList.remove('show');
@@ -4025,10 +4109,12 @@ function runCheckAI(imageDataUrl) {
 
   var settings = getSettings();
 
-  // 路径1: 有TextIn → OCR + (Claude提取 或 本地规则引擎)
+  // 路径1: 有TextIn → 压缩图片 + OCR + (Claude提取 或 本地规则引擎)
   if (settings.textinAppId && settings.textinSecret) {
     loadingText.textContent = 'OCR识别中...';
-    textinOCR(imageDataUrl, settings).then(function(ocrText) {
+    compressImage(imageDataUrl, 1200).then(function(compressed) {
+      return textinOCR(compressed, settings);
+    }).then(function(ocrText) {
       if (settings.claudeApiKey) {
         loadingText.textContent = 'AI提取商品信息...';
         return claudeExtractCheckItems(ocrText, settings);
