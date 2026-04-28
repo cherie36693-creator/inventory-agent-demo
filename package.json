@@ -1,0 +1,12 @@
+{
+  "name": "inventory-agent-demo",
+  "version": "1.0.0",
+  "description": "库存助手 Agent Demo",
+  "main": "inventory-proxy.js",
+  "scripts": {
+    "start": "node inventory-proxy.js"
+  },
+  "engines": {
+    "node": ">=14"
+  }
+}
